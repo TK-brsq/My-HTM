@@ -76,3 +76,5 @@ class SpatialPooler:
                     s['weight'] = min(1, s['weight'] + 0.03)
                 else:
                     s['weight'] = max(0, s['weight'] - 0.02)
+
+a = 0
