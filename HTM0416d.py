@@ -4,11 +4,6 @@ import numpy as np
 import random
 
 @dataclass
-class Synapse:
-    target: Tuple[int, int]
-    weight: float
-
-@dataclass
 class Segment:
     seg_id: int
     num_synapses: int
@@ -119,3 +114,8 @@ class TemporalPooling:
         for col in self.columns:
             for cel in col.cells:
                 for seg in cel.segments:
+#0416の自分へ
+#segmentの中にrows, cols, weightsを作って, weighs > 0.2でactive synapse idxをとって
+#rows cols [idx]からzip()でconnected cell listを得る
+#active state, predictive stateのwhere, zip, setでcoordとって
+#temporal poolingの中で(or Segmentの中)で len(coord_active & coord_synapse)
