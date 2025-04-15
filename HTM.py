@@ -22,6 +22,9 @@ class Segment:
     def get_active_source(self, w_threshold=0.2):
         active_sy = (self.synapses_weight >= w_threshold)
         return self.synapses_src[active_sy]
+    
+    def calc_overlap(self, active_state):
+
 
 @dataclass
 class Cell:
@@ -39,6 +42,7 @@ class Column:
     col_id: int
     num_cells: int
     num_synapses: int
+    input_size: int
     cells: List[Cell] = field(default_factory=list)
     synapses_src: np.ndarray = field(init=False)
     synapses_weights: np.ndarray = field(init=False)
@@ -46,12 +50,12 @@ class Column:
     def __post_init__(self):
         for cell_id in range(self.num_cells):
             self.cells.append(Cell(cell_id, 32))
-        self.synapses_src = np.random.choice(1024, self.num_synapses, replace=False)
+        self.synapses_src = np.random.choice(self.input_size, self.num_synapses, replace=False)
         self.synapses_weights = np.random.normal(0.2, 0.025, self.num_synapses)
 
     def get_active_synapses_idx(self, w_threshold=0.2):
-        active_sy = (self.synapses_weight >= w_threshold)
-        return self.synapse_sources[active_sy]
+        active_sy = (self.synapses_weights >= w_threshold)
+        return self.synapses_src[active_sy]
 
 
 @dataclass
@@ -64,7 +68,7 @@ class SpatialPooler:
 
     def __post_init__(self):
         for col_id in range(self.num_columns):
-            column = Column(col_id, self.num_cells, self.num_synapses)
+            column = Column(col_id, self.num_cells, self.num_synapses, self.input_size)
             self.columns.append(column)
 
     def calc_overlap(self, input: np.ndarray, o_threshold: int) -> np.ndarray:
@@ -89,3 +93,29 @@ class SpatialPooler:
             down_idx = ~up_idx
             weights[up_idx] = np.clip(weights[up_idx] + 0.02, 0.0, 1.0)
             weights[down_idx] = np.clip(weights[down_idx] - 0.02, 0.0, 1.0)
+
+@dataclass
+class TemporalPooling:
+    columns: List[Column]
+    num_cells: int
+    active_state: np.ndarray = field(init=False) # column x cell
+    predictive_state: np.ndarray = field(init=False) # column x cell
+
+    def __post_init__(self):
+        self.active_state = np.zeros((len(self.columns), self.num_cells))
+        self.predictive_state = np.zeros((len(self.columns), self.num_cells))
+        
+    def calc_active_state(self, active_colmn_idx):
+        for col_idx in active_colmn_idx:
+            predicted = False
+            for cel_idx in self.num_cells:
+                if self.predictive_state[col_idx, cel_idx] == True:
+                    self.active_state[col_idx, cel_idx] == True
+                    predicted = True
+            if predicted == False:
+                self.active_state[col_idx] = True
+    
+    def calc_predictive_state(self):
+        for col in self.columns:
+            for cel in col.cells:
+                for seg in cel.segments:
